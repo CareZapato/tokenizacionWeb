@@ -7,6 +7,7 @@ import {
 } from "../services/paymentServiceQA";
 import { SuccessModal } from "./SuccessModal";
 import VisaLogo from "../assets/Visa.png";
+import { formatCardNumber, validateCardNumber } from "../utils/cardUtils";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -15,6 +16,9 @@ interface PaymentModalProps {
 }
 
 export function PaymentModal({ isOpen, onClose, amount }: PaymentModalProps) {
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [cvv, setCvv] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -22,6 +26,7 @@ export function PaymentModal({ isOpen, onClose, amount }: PaymentModalProps) {
   const [modalMessage, setModalMessage] = useState("");
   const [useQA, setUseQA] = useState(false); // Estado para seleccionar entre Local o QA
   const [use3DS, setUse3DS] = useState(false); // Estado para habilitar 3DS
+  const [useTokenized, setUseTokenized] = useState(false); // Estado para habilitar el modo Tokenizado
   const [verificationCode, setVerificationCode] = useState(""); // Código de verificación ingresado
   const [isVerificationStep, setIsVerificationStep] = useState(false); // Paso de verificación 3DS
 
@@ -43,24 +48,31 @@ export function PaymentModal({ isOpen, onClose, amount }: PaymentModalProps) {
       return;
     }
 
+    if (!useTokenized && !validateCardNumber(cardNumber)) {
+      setError("El número de tarjeta debe tener 16 dígitos");
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
-      const payload = use3DS
+      const payload = useTokenized
         ? {
             meta: {
               _rqDateTime: new Date().toISOString(),
               _ipAddress: "143.30.11.111",
             },
             data: {
-              buyOrder: "B061177",
+              buyOrder: use3DS ? "B061177" : "D98883107",
               amount,
-              eci: "5",
-              authenticationValue: "00010109991234000000EB8C1520817500000000",
+              eci: use3DS ? "5" : "7",
+              authenticationValue: use3DS
+                ? "00010109991234000000EB8C1520817500000000"
+                : null,
               dsTransId: "03000000000070704C63EC909037C14051000000",
               posEntryMode: "010",
               pmntInd: null,
-              cardToken: "4818528630000176",
+              cardToken: "4818528630000176", // Token preenrolado
               tokenExpirationDate: "9912",
             },
           }
@@ -70,15 +82,17 @@ export function PaymentModal({ isOpen, onClose, amount }: PaymentModalProps) {
               _ipAddress: "143.30.11.111",
             },
             data: {
-              buyOrder: "D98883107",
+              buyOrder: use3DS ? "B061177" : "D98883107",
               amount,
-              eci: "7",
-              authenticationValue: null,
+              eci: use3DS ? "5" : "7",
+              authenticationValue: use3DS
+                ? "00010109991234000000EB8C1520817500000000"
+                : null,
               dsTransId: "03000000000070704C63EC909037C14051000000",
               posEntryMode: "010",
               pmntInd: null,
-              cardToken: "4818528630000176",
-              tokenExpirationDate: "9912",
+              cardToken: cardNumber.replace(/\s/g, ""), // Si no es tokenizado, usa el número de tarjeta
+              tokenExpirationDate: expiryDate.replace("/", ""),
             },
           };
 
@@ -126,40 +140,22 @@ export function PaymentModal({ isOpen, onClose, amount }: PaymentModalProps) {
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Simulación de Pago</h2>
-              <div className="flex items-center space-x-2">
-                <label
-                  className={`text-sm font-medium ${
-                    !useQA ? "text-gray-800" : "text-gray-400"
-                  }`}
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setUseTokenized(!useTokenized)}
+                  className="text-green-500 hover:text-green-700 text-sm"
                 >
-                  Local
-                </label>
-                <div
-                  className={`w-12 h-6 flex items-center bg-gray-300 rounded-full p-1 cursor-pointer ${
-                    useQA ? "bg-blue-500" : "bg-gray-300"
-                  }`}
-                  onClick={() => setUseQA(!useQA)}
+                  {useTokenized
+                    ? "Desactivar Tokenizado"
+                    : "Activar Tokenizado"}
+                </button>
+                <button
+                  onClick={() => setUse3DS(!use3DS)}
+                  className="text-blue-500 hover:text-blue-700 text-sm"
                 >
-                  <div
-                    className={`w-4 h-4 bg-white rounded-full shadow-md transform ${
-                      useQA ? "translate-x-6" : "translate-x-0"
-                    }`}
-                  ></div>
-                </div>
-                <label
-                  className={`text-sm font-medium ${
-                    useQA ? "text-gray-800" : "text-gray-400"
-                  }`}
-                >
-                  QA
-                </label>
+                  {use3DS ? "Desactivar 3DS" : "Activar 3DS"}
+                </button>
               </div>
-              <button
-                onClick={() => setUse3DS(!use3DS)}
-                className="text-blue-500 hover:text-blue-700 text-sm ml-4"
-              >
-                {use3DS ? "Desactivar 3DS" : "Activar 3DS"}
-              </button>
               <button
                 onClick={onClose}
                 className="text-gray-500 hover:text-gray-700"
@@ -186,6 +182,44 @@ export function PaymentModal({ isOpen, onClose, amount }: PaymentModalProps) {
             )}
 
             <form onSubmit={handleSubmit}>
+              {!useTokenized && !isVerificationStep && (
+                <>
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      placeholder="Número de tarjeta"
+                      value={cardNumber}
+                      onChange={(e) =>
+                        setCardNumber(formatCardNumber(e.target.value))
+                      }
+                      maxLength={19}
+                      className="w-full p-3 border rounded-lg"
+                      disabled={isProcessing}
+                    />
+                  </div>
+                  <div className="flex gap-4 mb-6">
+                    <input
+                      type="text"
+                      placeholder="MM/YY"
+                      value={expiryDate}
+                      onChange={(e) => setExpiryDate(e.target.value)}
+                      maxLength={5}
+                      className="w-1/2 p-3 border rounded-lg"
+                      disabled={isProcessing}
+                    />
+                    <input
+                      type="text"
+                      placeholder="CVV"
+                      value={cvv}
+                      onChange={(e) => setCvv(e.target.value)}
+                      maxLength={3}
+                      className="w-1/2 p-3 border rounded-lg"
+                      disabled={isProcessing}
+                    />
+                  </div>
+                </>
+              )}
+
               {isVerificationStep && (
                 <div className="mb-4">
                   <input
