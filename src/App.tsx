@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { ProductCard } from './components/ProductCard';
-import { PaymentModal } from './components/PaymentModal';
+import React, { useState } from "react";
+import { ProductCard } from "./components/ProductCard";
+import { PaymentModal } from "./components/PaymentModal";
 
 function App() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -11,7 +11,7 @@ function App() {
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
-        amount={40450}
+        amount={36990}
       />
     </div>
   );
