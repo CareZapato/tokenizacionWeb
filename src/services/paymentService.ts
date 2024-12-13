@@ -1,3 +1,5 @@
+import { TokenizedPaymentData } from "../model/TokenizedPaymentData";
+
 interface PaymentData {
   cardNumber: string;
   expiryDate: string;
@@ -41,49 +43,15 @@ interface PaymentData {
 // };
 
 export const processPayment = async (
-  paymentData: PaymentData
+  paymentData: TokenizedPaymentData
 ): Promise<string> => {
   try {
-    // Construimos el JSON para enviar al backend
-    const requestBody = {
-      meta: {
-        _rqDateTime: new Date().toISOString(),
-        _ipAddress: "143.30.11.111", // Puede ser dinámico
-      },
-      data: {
-        buyOrder: "FL00M030",
-        amount: paymentData.amount,
-        eci: "2",
-        authenticationValue: null,
-        dsTransId: "00010109991234000000EB8C1520757400000001",
-        posEntryMode: "010",
-        pmntInd: "C",
-        cardToken: paymentData.cardNumber,
-        tokenExpirationDate: paymentData.expiryDate,
-        deviceTypeTkn: "00",
-        tknAssuranceLvl: "21",
-        tknRqId: "01234567891",
-        dsTrxId: "85445dc5-2be1-4b47-a784-518731d57009",
-        recurPmnt: "F",
-        authenticationVersion: "0",
-        pgmProto: "2",
-        tknType: "05",
-        txnType: "2",
-      },
-    };
-
-    console.log(
-      "Llamando a POST /transactions con el body:",
-      JSON.stringify(requestBody, null, 2)
-    );
-
-    // Llamada al backend en /transactions
     const response = await fetch("http://localhost:8080/transactions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(paymentData),
     });
 
     if (!response.ok) {
@@ -94,7 +62,7 @@ export const processPayment = async (
     const token = result.data?.token;
 
     if (!token) {
-      throw new Error("No se encontró un token en la respuesta local.");
+      throw new Error("No se recibió un token válido para la transacción.");
     }
 
     return token;

@@ -1,3 +1,5 @@
+import { TokenizedPaymentData } from "../model/TokenizedPaymentData";
+
 export interface PaymentData {
   cardNumber: string;
   expiryDate: string;
@@ -11,43 +13,9 @@ export interface PaymentData {
  * @returns Token generado para la transacción.
  */
 export const processPaymentQA = async (
-  paymentData: PaymentData
+  paymentData: TokenizedPaymentData
 ): Promise<string> => {
   try {
-    // Construimos el JSON para enviar al backend de QA
-    const requestBody = {
-      meta: {
-        _rqDateTime: new Date().toISOString(),
-        _ipAddress: "143.30.11.111", // Puedes obtenerlo dinámicamente si es necesario
-      },
-      data: {
-        buyOrder: "FL00M030",
-        amount: paymentData.amount,
-        eci: "2",
-        authenticationValue: null,
-        dsTransId: "00010109991234000000EB8C1520757400000001",
-        posEntryMode: "010",
-        pmntInd: "C",
-        cardToken: paymentData.cardNumber,
-        tokenExpirationDate: paymentData.expiryDate,
-        deviceTypeTkn: "00",
-        tknAssuranceLvl: "21",
-        tknRqId: "01234567891",
-        dsTrxId: "85445dc5-2be1-4b47-a784-518731d57009",
-        recurPmnt: "F",
-        authenticationVersion: "0",
-        pgmProto: "2",
-        tknType: "05",
-        txnType: "2",
-      },
-    };
-
-    console.log(
-      "Llamando a QA POST /transactions con el body:",
-      JSON.stringify(requestBody, null, 2)
-    );
-
-    // Llamada al endpoint de QA
     const response = await fetch(
       "https://release.tem-ms-create-transaction-helm.qa2.us-east-1.aws.transbank.local/transactions",
       {
@@ -55,7 +23,7 @@ export const processPaymentQA = async (
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(paymentData),
       }
     );
 
@@ -67,7 +35,7 @@ export const processPaymentQA = async (
     const token = result.data?.token;
 
     if (!token) {
-      throw new Error("No se encontró un token en la respuesta de QA.");
+      throw new Error("No se recibió un token válido para la transacción.");
     }
 
     return token;
