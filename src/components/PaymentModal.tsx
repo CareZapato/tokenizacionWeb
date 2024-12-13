@@ -222,6 +222,11 @@ export function PaymentModal({ isOpen, onClose, amount }: PaymentModalProps) {
 
               {isVerificationStep && (
                 <div className="mb-4">
+                  {/* Mensaje visual sobre el cuadro de verificación */}
+                  <div className="p-3 bg-blue-100 text-blue-700 rounded-lg mb-4">
+                    Hemos enviado un código de verificación a su correo. Por
+                    favor, ingréselo a continuación.
+                  </div>
                   <input
                     type="text"
                     placeholder="Código de verificación"
